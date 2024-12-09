@@ -14,44 +14,39 @@ export default function QuizView() {
   const { quizzes } = useSelector((state: any) => state.quizReducer);
   const quizFromRedux = quizzes.find((quiz: any) => quiz._id === qid);
 
-  // State for the quiz data
+  // Component state
   const [quiz, setQuiz] = useState<any>(
     quizFromRedux || { title: "", questions: [] }
   );
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(!quizFromRedux);
-  const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch questions from the API
   useEffect(() => {
-    const fetchQuestions = async () => {
-      setLoadingQuestions(true); // Start loading questions
+    const fetchQuizData = async () => {
       try {
-        const questions = await quizClient.findQuestionsForQuiz(qid); // Fetch questions
+        // Always fetch questions to ensure they are up-to-date
+        const questions = await quizClient.findQuestionsForQuiz(qid);
         console.log("Fetched Questions:", questions);
 
-        // Update the quiz state with the fetched questions
         setQuiz((prevQuiz: any) => ({
           ...prevQuiz,
           title: prevQuiz.title || quizFromRedux?.title || "Untitled Quiz",
-          questions,
+          questions, // Update questions
         }));
       } catch (err) {
         console.error("Failed to fetch questions:", err);
         setError("Failed to load quiz data.");
       } finally {
-        setLoadingQuestions(false); // End loading questions
+        setLoading(false);
       }
     };
 
-    if (!quizFromRedux || !quizFromRedux.questions) {
-      fetchQuestions();
-    } else {
-      setQuiz(quizFromRedux); // Use Redux data if available
-    }
-    setLoading(false); // End loading main data
+    fetchQuizData();
   }, [qid, quizFromRedux]);
 
+  // Handle answer changes
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers((prevAnswers) => ({
       ...prevAnswers,
@@ -59,12 +54,13 @@ export default function QuizView() {
     }));
   };
 
+  // Navigate to the editor
   const handleEditQuiz = () => {
     navigate(`/Kanbas/Courses/${cid}/Quizzes/${qid}/editor`);
   };
 
-  if (loading) return <p>Loading quiz data...</p>;
-  if (loadingQuestions) return <p>Loading quiz questions...</p>;
+  // Render loading or error states
+  if (loading) return <p>Loading quiz...</p>;
   if (error) return <p>{error}</p>;
   if (!quiz) return <p>Quiz not found.</p>;
 
