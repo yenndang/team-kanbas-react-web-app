@@ -14,37 +14,42 @@ export default function QuizView() {
   const { quizzes } = useSelector((state: any) => state.quizReducer);
   const quizFromRedux = quizzes.find((quiz: any) => quiz._id === qid);
 
+  // State for the quiz data
   const [quiz, setQuiz] = useState<any>(
     quizFromRedux || { title: "", questions: [] }
   );
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
-  const [loading, setLoading] = useState(!quizFromRedux); // Only show loading if not found in Redux
+  const [loading, setLoading] = useState(!quizFromRedux);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchQuestions = async () => {
+      setLoadingQuestions(true); // Start loading questions
       try {
-        const questions = await quizClient.findQuestionsForQuiz(qid); // Fetch only the questions
+        const questions = await quizClient.findQuestionsForQuiz(qid); // Fetch questions
         console.log("Fetched Questions:", questions);
 
+        // Update the quiz state with the fetched questions
         setQuiz((prevQuiz: any) => ({
           ...prevQuiz,
-          title:
-            prevQuiz.title ||
-            (quizFromRedux ? quizFromRedux.title : "Untitled Quiz"),
+          title: prevQuiz.title || quizFromRedux?.title || "Untitled Quiz",
           questions,
         }));
       } catch (err) {
         console.error("Failed to fetch questions:", err);
         setError("Failed to load quiz data.");
       } finally {
-        setLoading(false);
+        setLoadingQuestions(false); // End loading questions
       }
     };
 
     if (!quizFromRedux || !quizFromRedux.questions) {
       fetchQuestions();
+    } else {
+      setQuiz(quizFromRedux); // Use Redux data if available
     }
+    setLoading(false); // End loading main data
   }, [qid, quizFromRedux]);
 
   const handleAnswerChange = (questionId: string, answer: string) => {
@@ -58,7 +63,8 @@ export default function QuizView() {
     navigate(`/Kanbas/Courses/${cid}/Quizzes/${qid}/editor`);
   };
 
-  if (loading) return <p>Loading quiz...</p>;
+  if (loading) return <p>Loading quiz data...</p>;
+  if (loadingQuestions) return <p>Loading quiz questions...</p>;
   if (error) return <p>{error}</p>;
   if (!quiz) return <p>Quiz not found.</p>;
 
