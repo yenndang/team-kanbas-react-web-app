@@ -31,10 +31,9 @@ export default function QuizDetails() {
           <>
             <button
               className="btn btn-secondary btn-md me-2"
-              onClick={() => {
-                console.log(`Navigating to Preview for Quiz ID: ${qid}`);
-                navigate(`/Kanbas/Courses/${cid}/Quizzes/${qid}/Preview`);
-              }}
+              onClick={() =>
+                navigate(`/Kanbas/Courses/${cid}/Quizzes/${qid}/Preview`)
+              }
             >
               Preview
             </button>
