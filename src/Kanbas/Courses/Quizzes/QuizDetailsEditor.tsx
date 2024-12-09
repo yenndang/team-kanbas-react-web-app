@@ -27,7 +27,7 @@ export default function QuizDetailsEditor() {
     points: 100,
     assignmentGroup: "Quizzes",
     shuffleAnswers: true,
-    timeLimit: 30,
+    timeLimit: 20,
     multipleAttempts: false,
     attemptsAllowed: 1,
     showCorrectAnswers: "After Due Date",
@@ -173,10 +173,12 @@ export default function QuizDetailsEditor() {
                   type="checkbox"
                   id="timeLimitCheckbox"
                   checked={Boolean(newQuiz.timeLimit)}
-                  onChange={() =>
+                  onChange={(e) =>
                     setNewQuiz({
                       ...newQuiz,
-                      timeLimit: newQuiz.timeLimit ? undefined : 30,
+                      timeLimit: newQuiz.timeLimit
+                        ? e.target.checked
+                        : undefined,
                     })
                   }
                 />
