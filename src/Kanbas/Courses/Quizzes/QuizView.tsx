@@ -1,39 +1,42 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { FaPencil } from "react-icons/fa6";
 import { PiWarningCircleBold } from "react-icons/pi";
 import * as quizClient from "./client";
+import { setResponses } from "./responseReducer";
+import * as userClient from "../../Account/client";
 
 export default function QuizView() {
   const { cid, qid } = useParams();
+  const { currentUser } = useSelector((state: any) => state.accountReducer);
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Access quizzes from the Redux store
+  const dispatch = useDispatch();
+
   const { quizzes } = useSelector((state: any) => state.quizReducer);
   const quizFromRedux = quizzes.find((quiz: any) => quiz._id === qid);
 
-  // Component state
   const [quiz, setQuiz] = useState<any>(
     quizFromRedux || { title: "", questions: [] }
   );
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(!quizFromRedux);
   const [error, setError] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<string | null>(null);
 
-  // Fetch questions from the API
+  const { responses } = useSelector((state: any) => state.responsesReducer);
+
   useEffect(() => {
     const fetchQuizData = async () => {
       try {
-        // Always fetch questions to ensure they are up-to-date
         const questions = await quizClient.findQuestionsForQuiz(qid);
-        console.log("Fetched Questions:", questions);
 
         setQuiz((prevQuiz: any) => ({
           ...prevQuiz,
           title: prevQuiz.title || quizFromRedux?.title || "Untitled Quiz",
-          questions, // Update questions
+          questions,
         }));
       } catch (err) {
         console.error("Failed to fetch questions:", err);
@@ -42,24 +45,59 @@ export default function QuizView() {
         setLoading(false);
       }
     };
-
     fetchQuizData();
   }, [qid, quizFromRedux]);
 
-  // Handle answer changes
+  useEffect(() => {
+    const currentTime = new Date().toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+    });
+    setStartTime(currentTime);
+  }, [answers]);
+
   const handleAnswerChange = (questionId: string, answer: string) => {
-    setAnswers((prevAnswers) => ({
-      ...prevAnswers,
-      [questionId]: answer,
-    }));
+    setAnswers((prevAnswers) => {
+      const updatedAnswers = { ...prevAnswers, [questionId]: answer };
+      return updatedAnswers;
+    });
   };
 
-  // Navigate to the editor
+  const handleSubmitQuiz = async () => {
+    const quizResponses = quiz.questions.map((question: any) => {
+      const userAnswer = answers[question._id] || "";
+      const correctAnswer = question.answers.find(
+        (answer: any) => answer.correct
+      );
+      const isCorrect = correctAnswer && userAnswer === correctAnswer.text;
+
+      return {
+        questionId: question._id,
+        answer: userAnswer,
+        isCorrect: isCorrect,
+      };
+    });
+
+    const quizData = {
+      grade: 10,
+      responses: quizResponses,
+    };
+
+    await userClient.createQuizResponse(
+      currentUser._id,
+      qid as string,
+      quizData
+    );
+    dispatch(setResponses(quizData));
+  };
+
   const handleEditQuiz = () => {
     navigate(`/Kanbas/Courses/${cid}/Quizzes/${qid}/editor`);
   };
 
-  // Render loading or error states
   if (loading) return <p>Loading quiz...</p>;
   if (error) return <p>{error}</p>;
   if (!quiz) return <p>Quiz not found.</p>;
@@ -77,7 +115,7 @@ export default function QuizView() {
           </div>
         </div>
       )}
-      <span>Started: Nov 29 at 8:19am</span>
+      <span>Started: {startTime || "Loading..."}</span>
       <p>
         <b>Quiz Instructions:</b> Answer all questions below. Submit when done.
       </p>
@@ -91,7 +129,6 @@ export default function QuizView() {
             </div>
             <div className="card-body">
               <p>{question.questionText}</p>
-              {/* Render Multiple Choice Questions */}
               {question.type === "Multiple Choice" && (
                 <div className="list-group">
                   {question.answers.map((answer: any, idx: number) => (
@@ -114,30 +151,28 @@ export default function QuizView() {
                   ))}
                 </div>
               )}
-              {/* Render True/False Questions */}
               {question.type === "True/False" && (
                 <div className="list-group">
-                  {question.answers.map((answer: any, idx: number) => (
+                  {["True", "False"].map((option) => (
                     <label
-                      key={idx}
+                      key={option}
                       className="list-group-item d-flex align-items-center"
                     >
                       <input
                         type="radio"
                         name={`question-${index}`}
-                        value={answer.text}
-                        checked={answers[question._id] === answer.text}
+                        value={option}
+                        checked={answers[question._id] === option}
                         onChange={() =>
-                          handleAnswerChange(question._id, answer.text)
+                          handleAnswerChange(question._id, option)
                         }
                         className="me-2"
                       />
-                      {answer.text}
+                      {option}
                     </label>
                   ))}
                 </div>
               )}
-              {/* Render Fill in the Blank Questions */}
               {question.type === "Fill in the Blank" && (
                 <div className="mb-3">
                   <input
@@ -159,8 +194,10 @@ export default function QuizView() {
       )}
       <ul id="wd-assignments" className="list-group rounded-0 mt-4">
         <li className="list-group-item p-2 ps-1 d-flex justify-content-end align-items-center">
-          <div className="me-2">Quiz saved at 8:19am</div>
-          <button className="btn btn-secondary">Submit Quiz</button>
+          <div className="me-2">Quiz saved at {startTime || "Loading..."}</div>
+          <button className="btn btn-secondary" onClick={handleSubmitQuiz}>
+            Submit Quiz
+          </button>
         </li>
       </ul>
       {location.pathname.includes("Preview") && (

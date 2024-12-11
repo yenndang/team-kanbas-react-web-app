@@ -1,11 +1,63 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TbArrowBigRightFilled } from "react-icons/tb";
+import { updateQuestions } from "./reducer";
+import { useDispatch } from "react-redux";
+import UpdateQuestionButtons from "./UpdateQuestionButtons";
 
-const TrueFalseQuestionEditor = ({ question }: { question: any }) => {
-  const [selectedOption, setSelectedOption] = useState(null);
+const TrueFalseQuestionEditor = ({
+  quiz,
+  question,
+  handleUpdateQuestion,
+  cancelEdit,
+}: {
+  quiz: any;
+  question: any;
+  handleUpdateQuestion: (question: any) => void;
+  cancelEdit: (id: string) => void;
+}) => {
+  const dispatch = useDispatch();
+  const [updateQuestion, setUpdateQuestion] = useState({
+    questionText: question.questionText || "",
+    answers: [
+      {
+        text: question.answers?.[0]?.text || "True",
+        correct: true,
+      },
+    ],
+    ...question,
+  });
 
-  const handleClick = (value: any) => {
+  const [selectedOption, setSelectedOption] = useState(
+    question.answers?.[0]?.text.toLowerCase() || "true"
+  );
+
+  useEffect(() => {
+    setUpdateQuestion({
+      ...question,
+      questionText: question.questionText || "",
+      answers: [
+        {
+          text: question.answers?.[0]?.text || "True",
+          correct: true,
+        },
+      ],
+    });
+    setSelectedOption(question.answers?.[0]?.text.toLowerCase() || "true");
+  }, [question]);
+
+  const handleSelectOption = (value: "true" | "false") => {
+    const updatedAnswers = [
+      {
+        text: value === "true" ? "True" : "False",
+        correct: true,
+      },
+    ];
     setSelectedOption(value);
+    setUpdateQuestion((prev: any) => ({
+      ...prev,
+      answers: updatedAnswers,
+    }));
+    dispatch(updateQuestions({ ...updateQuestion, answers: updatedAnswers }));
   };
 
   return (
@@ -22,6 +74,13 @@ const TrueFalseQuestionEditor = ({ question }: { question: any }) => {
           className="form-control mb-2"
           id="wd-true-or-false-question"
           placeholder="Enter question..."
+          value={updateQuestion.questionText}
+          onChange={(e) =>
+            setUpdateQuestion((prev: any) => ({
+              ...prev,
+              questionText: e.target.value,
+            }))
+          }
         />
         <div className="true-false-section d-flex flex-column">
           <b>Answers:</b>
@@ -33,7 +92,7 @@ const TrueFalseQuestionEditor = ({ question }: { question: any }) => {
               className={`fw-bold ${
                 selectedOption === "true" ? "text-success" : "text-dark"
               }`}
-              onClick={() => handleClick("true")}
+              onClick={() => handleSelectOption("true")}
               style={{ cursor: "pointer" }}
             >
               True
@@ -47,7 +106,7 @@ const TrueFalseQuestionEditor = ({ question }: { question: any }) => {
               className={`fw-bold ${
                 selectedOption === "false" ? "text-danger" : "text-dark"
               }`}
-              onClick={() => handleClick("false")}
+              onClick={() => handleSelectOption("false")}
               style={{ cursor: "pointer" }}
             >
               False
@@ -55,6 +114,12 @@ const TrueFalseQuestionEditor = ({ question }: { question: any }) => {
           </div>
         </div>
       </div>
+      <UpdateQuestionButtons
+        quiz={quiz}
+        question={updateQuestion}
+        handleUpdateQuestion={handleUpdateQuestion}
+        cancelEdit={cancelEdit}
+      />
     </div>
   );
 };
